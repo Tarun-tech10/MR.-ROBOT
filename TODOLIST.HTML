@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Solar System</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+    .arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 2rem;
+      color: white;
+      cursor: pointer;
+      z-index: 10;
+      user-select: none;
+    }
+    .arrow.left { left: 10px; }
+    .arrow.right { right: 10px; }
+  </style>
+</head>
+<body>
+  <div class="arrow left" onclick="switchPlanet('left')">&#9664;</div>
+  <div class="arrow right" onclick="switchPlanet('right')">&#9654;</div>
+
+  <script>
+    // Scene and camera setup
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(0, 0, 3); // In front of planet
+    scene.add(directionalLight);
+
+    // Texture loader
+    const textureLoader = new THREE.TextureLoader();
+    const textures = {
+      earth: textureLoader.load('https://threejs.org/examples/textures/land_ocean_ice_cloud_2048.jpg'),
+      mars: textureLoader.load('https://threejs.org/examples/textures/mars_1k_color.jpg'),
+    };
+
+    // Create planet mesh
+    const geometry = new THREE.SphereGeometry(1, 64, 64);
+    let material = new THREE.MeshPhongMaterial({ map: textures.earth });
+    const planet = new THREE.Mesh(geometry, material);
+    scene.add(planet);
+
+    // Pivot for camera rotation
+    const pivot = new THREE.Object3D();
+    scene.add(pivot);
+    pivot.add(camera);
+    camera.position.set(0, 0, 3);
+
+    // Animation loop
+    function animate() {
+      requestAnimationFrame(animate);
+      planet.rotation.y += 0.002;
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+    });
+
+    // Z-axis transition function
+    let isTransitioning = false;
+
+    function switchPlanet(direction) {
+      if (isTransitioning) return;
+      isTransitioning = true;
+
+      let rotationAmount = 0;
+      const maxRotation = Math.PI;
+      const speed = 0.05;
+      const targetTexture = direction === 'left' ? textures.mars : textures.earth;
+      const rotationDirection = direction === 'left' ? 1 : -1;
+      let textureChanged = false;
+
+      const rotateCamera = () => {
+        if (rotationAmount < maxRotation) {
+          pivot.rotation.z += speed * rotationDirection;
+          rotationAmount += speed;
+
+          if (!textureChanged && rotationAmount >= maxRotation / 2) {
+            material.map = targetTexture;
+            material.needsUpdate = true;
+            textureChanged = true;
+          }
+
+          requestAnimationFrame(rotateCamera);
+        } else {
+          pivot.rotation.z = 0;
+          camera.position.set(0, 0, 3);
+          isTransitioning = false;
+        }
+      };
+
+      rotateCamera();
+    }
+
+    // Keyboard control
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowLeft') switchPlanet('left');
+      else if (event.key === 'ArrowRight') switchPlanet('right');
+    });
+  </script>
+</body>
+</html>
